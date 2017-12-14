@@ -1,0 +1,162 @@
+#include<string>
+#include<vector>
+#include<sstream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> 
+#include <vector>
+#include "Ngram.h"
+#include "VocabMap.h"
+#include <typeinfo>
+using namespace std;
+
+static Vocab voc;
+static Vocab voc_zhu, voc_word;
+const VocabIndex emptyContext[] = {Vocab_None};
+VocabString* search_map(char *map_name, VocabString* input_words, int index){
+	//input word should be ZhuYin
+	VocabString mapped_words[maxWordsPerLine];
+	VocabIndex wid = voc_zhu.getIndex(input_words[index]);
+    File map_file(map_name, "r");
+    char* map_line = '\0';
+    while(map_line = map_file.getline()){
+        VocabString map_words[maxWordsPerLine];
+        unsigned map_length = Vocab::parseWords(map_line, \
+            &map_words[0], maxWordsPerLine);
+
+        VocabIndex map_init_id = \
+            voc_zhu.getIndex(map_words[0]);
+        if(map_init_id == wid){
+        	for(int i = 0; i < map_length-1; i++){
+        		mapped_words[i] = map_words[i+1];
+        	}        
+        }
+        
+    }
+    map_file.close();
+	return mapped_words;
+} 
+void viterbi(Ngram& lm, char *map_name, VocabString* input_words, unsigned length){
+    char* map_line = '\0';
+    int index;
+    vector<vector<long double> > delta;//[i][t]
+    vector<vector<double> > b;
+    vector<vector<double> > a;
+    vector<double> pi;
+    VocabString output_words[maxWordsPerLine];
+    
+    
+    output_words[0] = input_words[0];//SoS
+    VocabIndex SoS[] = {voc.getIndex("<s>"), Vocab_None};
+    for(int i = 1; i < length; i++){
+    	VocabIndex wid = voc.getIndex(input_words[i]);
+    	
+    	if(wid != Vocab_None){
+    		//cout<<"fuck ";
+    		output_words[i] = input_words[i];
+    		if(i == 1){
+    			pi.push_back(lm.wordProb(wid, SoS));
+    		}
+    		else{
+
+    		}
+    	}
+    	else{
+    		VocabString* mapped_words = search_map(map_name, input_words, i);
+    		//cout<<" map "<<mapped_words[0]<<" map ";
+    		
+    		output_words[i] = input_words[i];
+    	}
+    }
+    
+    for(int i = 0; i < length; i++){
+    	cout << output_words[i];
+    }
+
+
+    
+    /*
+    VocabIndex word_id = voc.getIndex(words[index]);
+    VocabIndex context[] = {voc.getIndex(words[index-1]),\
+        voc.getIndex(words[index-2]), Vocab_None};
+    if(word_id == Vocab_None){
+        File map_file(map_name, "r");
+        while(map_line = map_file.getline()){
+            word_id = voc_zhu.getIndex(words[index]);
+
+            VocabString map_words[maxWordsPerLine];
+
+            unsigned length = Vocab::parseWords(map_line, \
+                &map_words[0], maxWordsPerLine);
+
+            VocabIndex map_word_id = \
+                voc_zhu.getIndex(map_words[0]);
+            if(map_word_id == word_id){
+                cout<<map_words[0];
+                cout<<words[index];
+                cout<< "  fuck! "<<map_word_id;
+            }
+            
+        }
+        map_file.close();
+
+    }
+    else{
+        cout<<lm.wordProb(word_id, context)<<"  ";
+    }
+    */
+    cout<<endl;
+}
+
+
+int main(int argc, char* argv[]){
+    //VocabMap map(voc_zhu, voc_word);
+    int order;
+    char* map_name[19];
+    stringstream converter;
+    converter << argv[8];
+    converter >> order;
+    converter.clear();
+    
+    Ngram lm(voc, order);
+    /*
+    text argv[2], map argv[4]
+    lm argv[6], order argv[8]
+    Everything printed will be in result2/xx.txt
+    */
+    File map_file(argv[4], "r");
+    VocabMap map(voc_zhu, voc_word);
+    map.read(map_file);
+    map_file.close();
+    
+
+    File lm_file(argv[6], "r");
+    lm.read(lm_file);
+    lm_file.close();
+
+    File testdata(argv[2], "r");
+    char* line = '\0';
+    
+    
+    while(line = testdata.getline()){
+        VocabString words[maxWordsPerLine];
+        //assign line to words[1:length]
+        unsigned length = Vocab::parseWords(line, \
+            &words[1], maxWordsPerLine);
+        //add SoS and EoS
+        words[0] = "<s>";
+        words[length+1] = "</s>";
+        //viterbi!!!
+        viterbi(lm, argv[4], words, length+2);
+        //+2 is owing to SoS and EoS
+        //finished viterbi!!!
+    }
+    
+    testdata.close();
+
+	return 0;
+}
+
+
+
+
