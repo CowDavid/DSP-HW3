@@ -11,15 +11,11 @@
 #include <typeinfo>
 #include <map>
 using namespace std;
-void show_2D_v(vector<vector<string> > input);
-void show_v(vector<string> input);
 long double bigram_prob(const char *previous, const char *current, Ngram *lm);
 void viterbi(string line, map<string, vector<string> > zhu_yin_map, Ngram *lm);
 int index_of_max_prob(vector<pair<vector<string>, long double> >word_and_prob);
 static Vocab voc;
-
 const VocabIndex emptyContext[] = {Vocab_None};
-
 int main(int argc, char* argv[]){
     int order = atoi(argv[8]);    
     Ngram lm(voc, order);
@@ -44,10 +40,10 @@ int main(int argc, char* argv[]){
         	zhu_yin_map[zhu].push_back(word); 
         }
     }
+    map_file.close();
     zhu_yin_map["<s>"] = {"<s>"};
     zhu_yin_map["</s>"] = {"</s>"};
     //---------------------------------------
-    map_file.close();
     ifstream testdata(argv[2]);
     string line;
     //start handling every sentence by viterbi 
@@ -98,14 +94,15 @@ void viterbi(string line, map<string, vector<string> > zhu_yin_map, Ngram *lm){
                 i.second += bigram_prob(i.first[i.first.size()-1].c_str(), current.c_str(), lm);                    
             }
             pair<vector<string>, long double> max = word_and_prob_p[index_of_max_prob(word_and_prob_p)];
-            for (auto& i: max.first) { cout << i << " "; }
+            for (auto& i: max.first) {
+            	cout << i << " "; 
+            }
             word_and_prob_p.clear();//words have been printed are useless, therefore delete them
 			pair<vector<string>, double> word({current}, 1);//add current word to the sequence
 			word_and_prob_p.push_back(word);
 		}
 		previous = current;
-	}
-	
+	}	
 	for (auto& i: word_and_prob_p) {
             i.second += bigram_prob(i.first[i.first.size()-1].c_str(), "</s>", lm);
     }
@@ -113,7 +110,6 @@ void viterbi(string line, map<string, vector<string> > zhu_yin_map, Ngram *lm){
     for (auto& i: max.first){ 
     	cout << i << " ";
     }
-    
     cout << "</s>" << endl;
 }
 int index_of_max_prob(vector<pair<vector<string>, long double> >word_and_prob){
@@ -127,7 +123,6 @@ int index_of_max_prob(vector<pair<vector<string>, long double> >word_and_prob){
 	}
 	return index;
 }
-
 long double bigram_prob(const char *previous, const char *current, Ngram *lm){
 	VocabIndex wid_p = voc.getIndex(previous);
 	VocabIndex wid_c = voc.getIndex(current);
@@ -141,18 +136,4 @@ long double bigram_prob(const char *previous, const char *current, Ngram *lm){
 	long double prob = lm->wordProb(wid_c, context);
 	return prob;
 
-}
-void show_v(vector<string> input){
-    for(int i = 0;i < input.size();i++){
-        cout<<input[i]<<endl;
-    }
-}
-void show_2D_v(vector<vector<string> > input){
-    for(int i = 0; i < input.size(); i++){
-        cout <<endl<<"[ ";
-        for(int j = 0; j < input[0].size(); j++){
-            cout << input[i][j]<<" ";
-        }
-        cout << " ]"<<endl;
-    }
 }
