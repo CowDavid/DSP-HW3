@@ -8,14 +8,13 @@
 #include <string.h> 
 #include <vector>
 #include "Ngram.h"
-#include "VocabMap.h"
 #include <typeinfo>
 #include <map>
 using namespace std;
 void show_2D_v(vector<vector<string> > input);
 void show_v(vector<string> input);
 long double bigram_prob(const char *previous, const char *current, Ngram *lm);
-//void viterbi(string line, map<string, vector<string> > zhu_yin_map, Ngram *lm);
+void viterbi(string line, map<string, vector<string> > zhu_yin_map, Ngram *lm);
 int index_of_max_prob(vector<pair<vector<string>, long double> >word_and_prob);
 static Vocab voc;
 
@@ -53,78 +52,33 @@ int main(int argc, char* argv[]){
     string line;
     //start handling every sentence by viterbi 
     while(getline(testdata, line)){
-    	istringstream ss(line);
-		string current;
-		string previous = "<s>";
-		pair<vector<string>, long double> initial({previous}, 0);
-		vector<pair<vector<string>, long double> > word_and_prob_p= {initial}; //previous word and its probability
-		
-		while(ss >> current){
-			if(zhu_yin_map[current].size() != 1){//current word is a zhu yin
-				vector<pair<vector<string>, long double> > word_and_prob_c;//current word and its probability
-				for(auto& i: zhu_yin_map[current]){
-					//iteration in the mapped words from current word(a zhuyin)
-					vector<pair<vector<string>, long double> > word_and_prob_help; 
-					//used to record the probability in every iteration in paths from previous word
-					for(int j = 0; j < zhu_yin_map[previous].size(); ++j){
-						//iteration in the mapped words from previous word, which also means iteration in every paths from previous word
-						long double bi_prob = bigram_prob(zhu_yin_map[previous][j].c_str(), i.c_str(), &lm);
-						pair<vector<string>, long double> help(word_and_prob_p[j].first, word_and_prob_p[j].second + bi_prob);
-						//add bigram probability to the previous probability
-						//p.s. use '+', because it is log(prob)
-						word_and_prob_help.push_back(help);//add a path
-					}
-					pair<vector<string>, double> i_max = word_and_prob_help[index_of_max_prob(word_and_prob_help)];
-                    i_max.first.push_back(i);
-					word_and_prob_c.push_back(i_max);
-				}
-				word_and_prob_p = word_and_prob_c;
-			}
-			else{//current word is not a zhu yin
-				
-				for (auto& i: word_and_prob_p) {
-                    long double bi_prob = bigram_prob(i.first[i.first.size()-1].c_str(), current.c_str(), &lm);
-                    i.second += bi_prob;
-                }              
-                pair<vector<string>, long double> max = word_and_prob_p[index_of_max_prob(word_and_prob_p)];
-                for (auto& i: max.first) { cout << i << " "; }
-                word_and_prob_p.clear();
-				pair<vector<string>, double> guo({zhu_yin_map[current][0]}, 1);
-				word_and_prob_p.push_back(guo);
-			}
-			previous = current;
-		}
-		
-		for (auto& i: word_and_prob_p) {
-	            i.second += bigram_prob(i.first[i.first.size()-1].c_str(), "</s>", &lm);
-	    }
-	    pair<vector<string>, double> max = word_and_prob_p[index_of_max_prob(word_and_prob_p)];
-	    for (auto& i: max.first){ 
-	    	cout << i << " ";
-	    }
-	    
-	    cout << "</s>" << endl;
+    	viterbi(line, zhu_yin_map, &lm);
     }
     testdata.close();
 	return 0;
 }
-/*
+
 void viterbi(string line, map<string, vector<string> > zhu_yin_map, Ngram *lm){
 	istringstream ss(line);
 	string current;
 	string previous = "<s>";
 	pair<vector<string>, long double> initial({previous}, 0);
 	vector<pair<vector<string>, long double> > word_and_prob_p= {initial}; //previous word and its probability
-	vector<pair<vector<string>, long double> > word_and_prob_c;//current word and its probability
+	/*word_and_prob_p description
+	[(a_sequence[first word, ... , previous word, current word],probability)]<-this is a path 	
+	[(a_sequence[first word, ... , previous word, current word],probability)]<-this is a path 	
+	...
+	When current word is not a zhu yin, word_and_prob_p will have only one path from the most probable previous word.
+	When current word is a zhu yin, the number of the paths will be the same as the number of mapped words of current zhu yin
+	*/
 	while(ss >> current){
 		if(zhu_yin_map[current].size() != 1){//current word is a zhu yin
-			
-			
+			vector<pair<vector<string>, long double> > word_and_prob_c;//current word and its probability
 			for(auto& i: zhu_yin_map[current]){
 				//iteration in the mapped words from current word(a zhuyin)
 				vector<pair<vector<string>, long double> > word_and_prob_help; 
 				//used to record the probability in every iteration in paths from previous word
-				for(unsigned int j = 0; j < zhu_yin_map[previous].size(); j++){
+				for(int j = 0; j < zhu_yin_map[previous].size(); ++j){
 					//iteration in the mapped words from previous word, which also means iteration in every paths from previous word
 					long double bi_prob = bigram_prob(zhu_yin_map[previous][j].c_str(), i.c_str(), lm);
 					pair<vector<string>, long double> help(word_and_prob_p[j].first, word_and_prob_p[j].second + bi_prob);
@@ -132,23 +86,22 @@ void viterbi(string line, map<string, vector<string> > zhu_yin_map, Ngram *lm){
 					//p.s. use '+', because it is log(prob)
 					word_and_prob_help.push_back(help);//add a path
 				}
-				word_and_prob_c.push_back(word_and_prob_help[index_of_max_prob(word_and_prob_help)]);
+				pair<vector<string>, double> i_max = word_and_prob_help[index_of_max_prob(word_and_prob_help)];
+                i_max.first.push_back(i);
+				word_and_prob_c.push_back(i_max);
 			}
 			word_and_prob_p = word_and_prob_c;
 		}
 		else{//current word is not a zhu yin
 			
-			vector<pair<vector<string>, long double> > word_and_prob_help; 
-			for(unsigned int j = 0; j < word_and_prob_p.size(); j++){
-				//iteration in the mapped words from previous word, which also means iteration in every paths from previous word
-				long double bi_prob = bigram_prob(zhu_yin_map[previous][j].c_str(), current.c_str(), lm);
-				pair<vector<string>, long double> help(word_and_prob_p[j].first, word_and_prob_p[j].second + bi_prob);
-				word_and_prob_help.push_back(help);//add a path
-			}
-			pair<vector<string>, long double> max = word_and_prob_help[index_of_max_prob(word_and_prob_help)];
-			word_and_prob_c.push_back(max);
-			for (auto& i: max.first) { cout << i << " "; }
-			
+			for (auto& i: word_and_prob_p) {
+                i.second += bigram_prob(i.first[i.first.size()-1].c_str(), current.c_str(), lm);                    
+            }
+            pair<vector<string>, long double> max = word_and_prob_p[index_of_max_prob(word_and_prob_p)];
+            for (auto& i: max.first) { cout << i << " "; }
+            word_and_prob_p.clear();//words have been printed are useless, therefore delete them
+			pair<vector<string>, double> word({current}, 1);//add current word to the sequence
+			word_and_prob_p.push_back(word);
 		}
 		previous = current;
 	}
@@ -162,7 +115,7 @@ void viterbi(string line, map<string, vector<string> > zhu_yin_map, Ngram *lm){
     }
     
     cout << "</s>" << endl;
-}*/
+}
 int index_of_max_prob(vector<pair<vector<string>, long double> >word_and_prob){
 	long double max_prob = -10000;
 	int index;
