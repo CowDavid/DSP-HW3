@@ -127,12 +127,14 @@ long double bigram_prob(const char *previous, const char *current, Ngram *lm){
 	VocabIndex wid_p = voc.getIndex(previous);
 	VocabIndex wid_c = voc.getIndex(current);
 	//oov handling---
-	if(wid_p == Vocab_None) 
+	if(wid_p == Vocab_None){
         wid_p = voc.getIndex(Vocab_Unknown);
-    if(wid_c == Vocab_None) 
+	}
+	if(wid_c == Vocab_None){
         wid_c = voc.getIndex(Vocab_Unknown);
+	}
     //---------------
-    VocabIndex context[] = { wid_p, Vocab_None};
+	VocabIndex context[] = { wid_p, Vocab_None};
 	long double prob = lm->wordProb(wid_c, context);
 	return prob;
 
